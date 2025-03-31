@@ -17,20 +17,38 @@ def inv_quantization(q,  x_min, x_max, B): # Input : quantization index q; Outpu
     return x_hat
 
 def bit_slicing(q, b): # Input : quantization index q; siliced quantization index q_l
-    b_IQ = b * 2 # to consider odd and even bits
+    b_IQ = b  # to consider odd and even bits
     L = b.numel()
     c_l = torch.zeros(L + 1)
     for l in range(1, L + 1):
         for i in range(l):
             c_l[l] += b_IQ[i]
+    #print(c_l)
     q_l = torch.zeros(L)
     for l in range(1, L + 1):
-        q_l[l - 1] = torch.floor(q / 2 ** c_l[l - 1]) - 2 ** b_IQ[l - 1] * torch.floor(q / 2 ** c_l[l])
-
+        q_l[l - 1] = torch.floor(q / (2 ** c_l[l - 1])) - 2 ** b_IQ[l - 1] * torch.floor(q / (2 ** c_l[l]))
+    #print(q_l)
     return q_l
 
-def reconstruction(q_l, b, x_min, delta):
-    b_IQ = b * 2 # to consider odd and even bits
+def inv_bit_slicing(u_hat_ml, M, b): # Input : quantization index q; siliced quantization index q_l
+    b_IQ = b  # to consider odd and even bits
+    L = b.numel()
+    c_l = torch.zeros(L + 1)
+    for l in range(1, L + 1):
+        for i in range(l):
+            c_l[l] += b_IQ[i]
+    #print(c_l)
+    u_hat_m = torch.zeros(M)
+    for m in range(M):
+        tmp = 0
+        for l in range(1, L + 1):
+            tmp += u_hat_ml[m][l-1] * 2**c_l[l-1]
+        u_hat_m[m] = tmp
+    print(u_hat_m)
+    return u_hat_m
+
+def reconstruction_x(q_l, b, x_min, delta):
+    b_IQ = b  # to consider odd and even bits
     L = b.numel()
     x_hat = 0
     c_l = torch.zeros(L + 1)
@@ -45,6 +63,14 @@ def reconstruction(q_l, b, x_min, delta):
     return x_hat
 
 import torch
+
+def reconstruction_y(u_hat_m, params, M, x_min, delta):
+    y_hat_m = torch.zeros(M)
+
+    for m in range(M):
+        y_hat_m[m] = u_hat_m[m]*delta + (delta/2 + x_min)*params.K
+
+    return y_hat_m
 
 
 def decimal_to_binary_auto(x, b) -> torch.Tensor: # Input : number x; Output : binary
